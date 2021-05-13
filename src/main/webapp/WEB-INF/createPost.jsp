@@ -14,10 +14,10 @@
 		</label>
 		<label>Post Category:
 		<select name="category">
-			<option value="Childcare">Childcare</option>
-			<option value="Politics">Politics</option>
-			<option value="Rants">Rants</option>
-			<option value="Recipes">Recipes</option>
+			<option value="childcare">Childcare</option>
+			<option value="politics">Politics</option>
+			<option value="rants">Rants</option>
+			<option value="recipes">Recipes</option>
 		</select>
 		</label>
 		<label>Tags:

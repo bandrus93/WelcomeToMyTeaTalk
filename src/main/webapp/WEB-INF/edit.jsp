@@ -10,7 +10,7 @@
 	<input type="text" name="title" value="${article.title}">
 	</label>
 	<label>Post Thumbnail:
-	<input type="file" name="thumbnail" value="${article.thumbnail}">
+	<input type="file" name="thumbnail">
 	</label>
 	<label>Post Category:
 	<select name="category">

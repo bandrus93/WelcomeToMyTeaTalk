@@ -1,11 +1,12 @@
 package com.innotech.teatalk.models;
 
+import java.util.List;
+
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.ManyToOne;
+import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 
 @Entity
@@ -15,8 +16,8 @@ public class Tag {
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 	private String name;
-	@ManyToOne(fetch=FetchType.LAZY)
-	private Article article;
+	@ManyToMany(mappedBy="tags")
+	private List<Article> articles;
 	
 	public Tag() {
 		
@@ -42,11 +43,11 @@ public class Tag {
 		this.name = name;
 	}
 
-	public Article getArticle() {
-		return article;
+	public List<Article> getArticles() {
+		return articles;
 	}
 
-	public void setArticle(Article article) {
-		this.article = article;
+	public void setArticles(List<Article> articles) {
+		this.articles = articles;
 	}
 }

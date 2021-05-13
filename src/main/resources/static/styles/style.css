@@ -1,8 +1,6 @@
 * {
 	vertical-align: baseline;
-	font-weight: inherit;
 	font-family: inherit;
-	font-style: inherit;
 	border: 0 none;
 	outline: 0;
 	padding: 0;
@@ -18,7 +16,7 @@
 
 .banner h1 {
     font-family: Syncopate, Serif;
-    color: #000000;
+    color: whitesmoke;
 }
 
 .navbar {
@@ -113,7 +111,7 @@
     clear: both;
 }
 
-.article {
+.article, .no-result {
 	width: 50%;
 	margin: auto;
 	clear: both;
@@ -130,6 +128,18 @@
 .article form label, p {
 	font-family: Dosis, sans-serif;
 	display: block;
+}
+
+.article p {
+	margin: 10px 0px;
+}
+
+.article ul li {
+	display: list-item;
+}
+
+.article table td {
+	border: 1px solid black;
 }
 
 .article form input[type=text], .article form input[type=password], .article form input[type=file], .article form select {
@@ -149,8 +159,20 @@
     margin: 5px 0px;
 }
 
+.cancel {
+	font-family: Dosis, sans-serif;
+	padding: 10px 15px;
+	margin: 5px 5px 5px 0px;
+}
+
 .error {
 	color: red;
+}
+
+.placeholder {
+	width: 300px;
+	height: 300px;
+	margin: 10px 0px;
 }
 
 .article-container {
@@ -179,6 +201,12 @@
     margin-right: 10px;
 }
 
+.article-container ul li p img {
+	width: 16px;
+	height: 16px;
+	margin: 0px 4px;
+}
+
 .article-container ul li p, .comment-box h3 {
     font-family: Dosis, sans-serif;
     color: #0c96e4;
@@ -201,21 +229,51 @@
     font-family: Dosis, sans-serif;
 }
 
-.comment form {
+.article-content p {
+	margin-bottom: 16px;
+}
+
+.article-content ul, .article-preview ul {
+	list-style-type: disc;
+	list-style-position: inside;
+}
+
+.article-content ul li, .article-preview ul li {
+	font-family: Dosis, sans-serif;
+	display: list-item;
+}
+
+hr {
+	border-style: inset;
+	border-width: 1px;
+}
+
+.comment form, .new-comment form {
 	border: none;
 	box-shadow: none;
 	padding: 0px;
 }
 
-.comment form textarea {
+.comment form textarea, .new-comment form textarea {
 	display: block;
 	border: 2px solid gray;
 	width: 100%;
 	font-size: large;
 }
 
+.reply-box {
+	border-left: 4px solid #212962;
+	padding: 10px;
+	margin-left: 16px;
+}
+
 .comment-box {
 	margin: 10px;
+}
+
+.comment-box ul li a {
+	text-decoration: none;
+	color: #0c96e4;
 }
 
 #content {
@@ -237,7 +295,8 @@
 }
 
 .article-preview {
-    overflow: auto;
+	height: 50%;
+    overflow: hidden;
     display: inline-block;
 }
 

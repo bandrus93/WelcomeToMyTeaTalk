@@ -9,10 +9,9 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinTable;
 import javax.persistence.JoinColumn;
-import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.PrePersist;
 import javax.persistence.PreUpdate;
 import javax.persistence.Table;
@@ -27,20 +26,11 @@ public class Comment {
 	@Column(updatable=false)
 	private Date submittedOn;
 	private Date editedOn;
-	@ManyToMany(fetch=FetchType.LAZY)
-	@JoinTable(
-		name="replies",
-		joinColumns=@JoinColumn(name="comment_id"),
-		inverseJoinColumns=@JoinColumn(name="reply_id")
-	)
-	private List<Comment> threads;
-	@ManyToMany(fetch=FetchType.LAZY)
-	@JoinTable(
-		name="replies",
-		joinColumns=@JoinColumn(name="reply_id"),
-		inverseJoinColumns=@JoinColumn(name="comment_id")
-	)
+	@OneToMany(mappedBy="threadRoot", fetch=FetchType.LAZY)
 	private List<Comment> replies;
+	@ManyToOne(fetch=FetchType.LAZY)
+	@JoinColumn(name="comment_id")
+	private Comment threadRoot;
 	@ManyToOne(fetch=FetchType.LAZY)
 	private User user;
 	@ManyToOne(fetch=FetchType.LAZY)
@@ -54,6 +44,12 @@ public class Comment {
 		this.user = user;
 		this.content = comment;
 		this.article = article;
+	}
+	
+	public Comment(User user, String reply, Comment root) {
+		this.user = user;
+		this.content = reply;
+		this.threadRoot = root;
 	}
 
 	public Long getId() {
@@ -88,12 +84,12 @@ public class Comment {
 		this.editedOn = editedOn;
 	}
 
-	public List<Comment> getThreads() {
-		return threads;
+	public Comment getThreadRoot() {
+		return threadRoot;
 	}
 
-	public void setThreads(List<Comment> threads) {
-		this.threads = threads;
+	public void setThreadRoot(Comment tRoot) {
+		this.threadRoot = tRoot;
 	}
 
 	public List<Comment> getReplies() {

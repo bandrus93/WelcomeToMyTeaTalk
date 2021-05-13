@@ -3,6 +3,7 @@ package com.innotech.teatalk.models;
 import java.util.Date;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -10,6 +11,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.PrePersist;
@@ -32,16 +35,29 @@ public class Article {
 	@Column(updatable=false)
 	private Date createdOn;
 	private Date updatedOn;
-	@OneToMany(mappedBy="article", fetch=FetchType.LAZY)
+	@ManyToMany
+	@JoinTable(
+		name="article_tags",
+		joinColumns=@JoinColumn(name="article_id"),
+		inverseJoinColumns=@JoinColumn(name="tag_id")
+	)
 	private List<Tag> tags;
 	@ManyToOne(fetch=FetchType.LAZY)
 	@JoinColumn(name="author_id")
 	private User author;
-	@OneToMany(mappedBy="article", fetch=FetchType.LAZY)
+	@OneToMany(mappedBy="article", cascade=CascadeType.ALL, fetch=FetchType.LAZY)
 	private List<Comment> comments;
 	
 	public Article() {
 		
+	}
+	
+	public Article(String title, String thumbnail, String cat, String body, User author) {
+		this.title = title;
+		this.thumbnail = thumbnail;
+		this.category = cat;
+		this.postBody = body;
+		this.author = author;
 	}
 	
 	public Article(String title, String thumbnail, String cat, String body, Long views, User author, List<Comment> comments) {

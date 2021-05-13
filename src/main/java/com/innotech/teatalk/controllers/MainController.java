@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.innotech.teatalk.models.Article;
 import com.innotech.teatalk.models.Comment;
@@ -44,6 +45,7 @@ public class MainController {
 	private CommentService cService;
 	private User loggedInUser;
 	private static String UPLOAD_PATH = "src/main/resources/static/images/thumbnails/";
+	private static String DELETE_PATH = "src/main/resources/static/";
 	
 	@GetMapping("/")
 	public String index(Model model, HttpSession session) {
@@ -60,15 +62,15 @@ public class MainController {
 	}
 	
 	@GetMapping("/login")
-	public String login() {
+	public String login(@ModelAttribute("error") String error) {
 		return "login.jsp";
 	}
 	
 	@PostMapping("/login")
-	public String loginUser(@RequestParam("email") String email, @RequestParam("password") String password, HttpSession session, Model model) {
+	public String loginUser(@RequestParam("email") String email, @RequestParam("password") String password, HttpSession session, RedirectAttributes redirect) {
 		if(!uService.authenticateUser(email, password)) {
-			model.addAttribute("error", "Invalid credentials");
-			return "login.jsp";
+			redirect.addFlashAttribute("error", "Invalid credentials");
+			return "redirect:/login";
 		} else {
 			session.setAttribute("user_id", uService.fetchUser(email).getId());
 			return "redirect:/";
@@ -87,11 +89,11 @@ public class MainController {
 	}
 	
 	@PostMapping("/register")
-	public String registerUser(@Valid @ModelAttribute("user") User user, BindingResult result, Model model, HttpSession session) {
+	public String registerUser(@Valid @ModelAttribute("user") User user, BindingResult result, RedirectAttributes redirect, HttpSession session) {
 		uValidator.validate(user, result);
 		if(result.hasErrors()) {
-			model.addAttribute("user", user);
-			return "register.jsp";
+			redirect.addFlashAttribute("user", user);
+			return "redirect:/register";
 		} else {
 			User newUser = uService.createUser(user);
 			session.setAttribute("user_id", newUser.getId());
@@ -100,16 +102,20 @@ public class MainController {
 	}
 	
 	@GetMapping("/admin")
-	public String grantPermission(Model model) {
-		model.addAttribute("users", uService.fetchAll());
-		return "admin.jsp";
+	public String grantPermission(@ModelAttribute("success") String message, Model model) {
+		if(loggedInUser.getPermissions() < 3 || loggedInUser == null) {
+			return "redirect:/login";
+		} else {
+			model.addAttribute("users", uService.fetchAll());
+			return "admin.jsp";
+		}
 	}
 	
 	@PostMapping("/admin")
-	public String changePermission(@RequestParam("user") Long id, @RequestParam("permission") int permission, Model model) {
+	public String changePermission(@RequestParam("user") Long id, @RequestParam("permission") int permission, RedirectAttributes redirect) {
 		uService.updatePermissions(id, permission);
-		model.addAttribute("success", "Permissions updated succesfully");
-		return "admin.jsp";
+		redirect.addFlashAttribute("success", "Permissions updated succesfully");
+		return "redirect:/admin";
 	}
 	
 	@GetMapping("/{category}")
@@ -120,8 +126,16 @@ public class MainController {
 		return "categoryHome.jsp";
 	}
 	
+	@PostMapping("/search")
+	public String search(@RequestParam("query") String query, Model model) {
+		model.addAttribute("posts", aService.search(query));
+		model.addAttribute("user", loggedInUser);
+		model.addAttribute("tab", "search");
+		return "categoryHome.jsp";
+	}
+	
 	@GetMapping("/articles/new")
-	public String createPost(Model model) {
+	public String createPost(@ModelAttribute("error") String error, Model model) {
 		if(loggedInUser.getPermissions() < 2) {
 			return "redirect:/";
 		} else {
@@ -131,22 +145,22 @@ public class MainController {
 	}
 	
 	@PostMapping("/articles/new")
-	public String uploadArticle(@RequestParam("title") String title, @RequestParam("thumbnail") MultipartFile thumbnail, @RequestParam("category") String category, @RequestParam("tags") String tags, @RequestParam("postBody") String body, Model model, HttpSession session) {
+	public String uploadArticle(@RequestParam("title") String title, @RequestParam("thumbnail") MultipartFile thumbnail, @RequestParam("category") String category, @RequestParam("tags") String tags, @RequestParam("postBody") String body, RedirectAttributes redirect, HttpSession session) {
 		if(title == null) {
-			model.addAttribute("error", "Title cannot be blank");
-			return "createPost.jsp";
+			redirect.addFlashAttribute("error", "Title cannot be blank");
+			return "redirect:/articles/new";
 		}
 		if(thumbnail.isEmpty()) {
-			model.addAttribute("error", "Thumbnail cannot be blank");
-			return "createPost.jsp";
+			redirect.addFlashAttribute("error", "Thumbnail cannot be blank");
+			return "redirect:/articles/new";
 		}
-		if(thumbnail.getSize() > 1000000) {
-			model.addAttribute("error", "Thumbnail too large");
-			return "createPost.jsp";
+		if(thumbnail.getSize() > 5000000) {
+			redirect.addFlashAttribute("error", "Thumbnail too large");
+			return "redirect:/articles/new";
 		}
 		if(body == null) {
-			model.addAttribute("error", "Post body cannot be blank");
-			return "createPost.jsp";
+			redirect.addFlashAttribute("error", "Post body cannot be blank");
+			return "redirect:/articles/new";
 		}
 		Article post;
 		try {
@@ -161,63 +175,73 @@ public class MainController {
 			post = aService.createPost(article);
 		} catch(IOException e) {
 			e.printStackTrace();
-			model.addAttribute("error", "Something went wrong. Please refresh the page and try again.");
-			return "createPost.jsp";
+			redirect.addFlashAttribute("error", "Something went wrong. Please refresh the page and try again.");
+			return "redirect:/articles/new";
 		}
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
 		return "redirect:/" + category + "/articles/" + post.getId();
 	}
 	
 	@GetMapping("/{category}/articles/{index}")
-	public String viewArticle(@PathVariable("index") Long id, Model model) {
+	public String viewArticle(@PathVariable("category") String cat, @PathVariable("index") Long id, @ModelAttribute("REDIRECT_FLAG") String redirect, Model model) {
 		Article article = aService.fetchArticle(id);
 		model.addAttribute("user", loggedInUser);
+		model.addAttribute("tab", cat);
 		model.addAttribute("article", article);
-		aService.updateViews(article);
+		if(!redirect.equals("true")) {
+			aService.updateViews(article);
+		}
 		return "article.jsp";
 	}
 	
 	@PostMapping("/{category}/articles/{index}")
-	public String postComment(@PathVariable("index") Long id, @RequestParam("comment") String comment, Model model) {
+	public String postComment(@PathVariable("category") String category, @PathVariable("index") Long id, @RequestParam("comment") String comment, RedirectAttributes redirect) {
 		cService.postComment(loggedInUser, comment, aService.fetchArticle(id));
-		model.addAttribute("user", loggedInUser);
-		model.addAttribute("article", aService.fetchArticle(id));
-		return "article.jsp";
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
+		return "redirect:/" + category + "/articles/" + id;
 	}
 	
 	@GetMapping("/articles/edit/{index}")
-	public String editArticle(@PathVariable("index") Long id, Model model) {
+	public String editArticle(@ModelAttribute("error") String error, @PathVariable("index") Long id, RedirectAttributes redirect, Model model) {
 		Article article = aService.fetchArticle(id);
 		if(loggedInUser == article.getAuthor() || loggedInUser.getPermissions() == 3) {
 			model.addAttribute("article", article);
 			model.addAttribute("user", loggedInUser);
 			return "edit.jsp";
 		} else {
+			redirect.addFlashAttribute("REDIRECT_FLAG", "true");
 			return "redirect:/" + article.getCategory() + "/articles/" + article.getId();
 		}
 	}
 	
 	@PostMapping("/articles/edit/{index}")
-	public String submitEdit(@PathVariable("index") Long id, @RequestParam("title") String title, @RequestParam("thumbnail") MultipartFile thumbnail, @RequestParam("category") String cat, @RequestParam("tags") String tags, @RequestParam("postBody") String body, Model model) {
+	public String submitEdit(@PathVariable("index") Long id, @RequestParam("title") String title, @RequestParam("thumbnail") MultipartFile thumbnail, @RequestParam("category") String cat, @RequestParam("tags") String tags, @RequestParam("postBody") String body, RedirectAttributes redirect) {
+		String url = "";
 		if(title == null) {
-			model.addAttribute("error", "Title cannot be blank");
-			return "edit.jsp";
+			redirect.addFlashAttribute("error", "Title cannot be blank");
+			return "redirect:/articles/edit/" + id;
 		}
 		if(thumbnail.isEmpty()) {
-			model.addAttribute("error", "Thumbnail cannot be blank");
-			return "edit.jsp";
+			url = aService.fetchArticle(id).getThumbnail();
+		}
+		if(thumbnail.getSize() > 5000000) {
+			redirect.addFlashAttribute("error", "Thumbnail too large");
+			return "redirect:/articles/edit/" + id;
 		}
 		if(body == null) {
-			model.addAttribute("error", "Post body cannot be blank");
-			return "edit.jsp";
+			redirect.addFlashAttribute("error", "Post body cannot be blank");
+			return "redirect:/articles/edit/" + id;
 		}
 		Article edit;
 		try {
-			byte[] bytes = thumbnail.getBytes();
-			Path path = Paths.get(UPLOAD_PATH + thumbnail.getOriginalFilename());
-			if(!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-				Files.write(path, bytes);
+			if(!thumbnail.isEmpty()) {
+				byte[] bytes = thumbnail.getBytes();
+				Path path = Paths.get(UPLOAD_PATH + thumbnail.getOriginalFilename());
+				if(!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+					Files.write(path, bytes);
+				}
+				url = "/images/thumbnails/" + thumbnail.getOriginalFilename();
 			}
-			String url = "/images/thumbnails/" + thumbnail.getOriginalFilename();
 			Long views = aService.fetchArticle(id).getViews();
 			List<Comment> comments = aService.fetchArticle(id).getComments();
 			Article updated = new Article(title, url, cat, body, views, aService.fetchArticle(id).getAuthor(), comments);
@@ -227,20 +251,60 @@ public class MainController {
 			edit = aService.editPost(updated, id);
 		} catch(IOException e) {
 			e.printStackTrace();
-			model.addAttribute("error", "Something went wrong. Please refresh the page and try again.");
-			return "edit.jsp";
+			redirect.addFlashAttribute("error", "Something went wrong. Please refresh the page and try again.");
+			return "redirect:/articles/edit/" + id;
 		}
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
 		return "redirect:/" + cat + "/articles/" + edit.getId();
 	}
 	
 	@GetMapping("/articles/delete/{index}")
-	public String deletePost(@PathVariable("index") Long id) {
+	public String deletePost(@PathVariable("index") Long id, RedirectAttributes redirect) {
 		Article article = aService.fetchArticle(id);
 		if(loggedInUser == article.getAuthor() || loggedInUser.getPermissions() == 3) {
 			aService.deletePost(id);
+			Path path = Paths.get(DELETE_PATH + article.getThumbnail());
+			try {
+				Files.delete(path);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			return "redirect:/" + article.getCategory();
 		} else {
+			redirect.addFlashAttribute("REDIRECT_FLAG", "true");
 			return "redirect:/" + article.getCategory() + "/articles/" + article.getId();
 		}
+	}
+	
+	@PostMapping("/comments/reply/{index}")
+	public String replyComment(@PathVariable("index") Long id, @RequestParam("reply") String reply, @RequestParam("article") Long articleId, RedirectAttributes redirect) {
+		Article article = aService.fetchArticle(articleId);
+		Comment tRoot = cService.fetchComment(id);
+		cService.postReply(loggedInUser, reply, tRoot);
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
+		return "redirect:/" + article.getCategory() + "/articles/" + articleId;
+	}
+	
+	@PostMapping("/comments/edit/{index}")
+	public String editComment(@PathVariable("index") Long id, @RequestParam("comment") String comment, @RequestParam("article") Long articleId, RedirectAttributes redirect) {
+		Article article = aService.fetchArticle(articleId);
+		cService.editComment(id, comment);
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
+		return "redirect:/" + article.getCategory() + "/articles/" + articleId;
+	}
+	
+	@GetMapping("/comments/delete/{index}/{id}")
+	public String deleteComment(@PathVariable("index") Long id, @PathVariable("id") Long articleId, RedirectAttributes redirect) {
+		Article article = aService.fetchArticle(articleId);
+		cService.deleteComment(id);
+		redirect.addFlashAttribute("REDIRECT_FLAG", "true");
+		return "redirect:/" + article.getCategory() + "/articles/" + articleId;
+	}
+	
+	@GetMapping("/info/{category}")
+	public String showInfo(@PathVariable("category") String cat, Model model) {
+		model.addAttribute("tab", cat);
+		model.addAttribute("user", loggedInUser);
+		return "info.jsp";
 	}
 }
